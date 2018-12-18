@@ -4,39 +4,56 @@ library(httr)
 library(jsonlite)
 library(dplyr)
 library(purrr)
+library(plyr) #adds the count method
 source("config.R")
 
 #Getting the data ------------
 
-petsData <- jsonlite::fromJSON(site, simplifyVector = FALSE, simplifyMatrix = TRUE	
-)
+petsData <- jsonlite::fromJSON(site, simplifyVector = FALSE, simplifyMatrix = TRUE)
+
+
+
 
 #Turning the data into a table from a list ------------
 
 #Remvoving a level of hierarchy
 petsData <- petsData$pets
+    
+head(petsData)
+
+
+
 
 #Turning it into a tibble
 petsDataTable <- petsData %>% {
+    statsList <- map(petsData, "stats")
     tibble(
         #choosing the columns
         name = map_chr(., "name"),
         CanBattle = map_lgl(., "canBattle"),
         family = map_chr(., "family"),
         #Using unlist to get into the list for this one
-        strongAgainst = unlist(map(.,"strongAgainst"))
+        strongAgainst = unlist(map(.,"strongAgainst")),
+        health = map(statsList, "health")
     )
 }
 
 head(petsDataTable)
 
+#change thables to using count, its way better as it creates a dataframe
 table(petsDataTable$CanBattle)
 table(petsDataTable$strongAgainst)
 
 
+
+#using count to create a dataframe
+families <- count(petsDataTable$family)
+families <- families[order(-families$freq),]
+families
+
 #Plotting practice ------
-barplot(height = table(petsDataTable$family),
-        names.arg = row.names(petsDataTable$family),
+barplot(height = families$freq,
+        names.arg = families$x,
         xlab = "Type",
         ylab = "Pet amount",
         main = "Amount of pets by type",
