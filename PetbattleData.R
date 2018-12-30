@@ -1,18 +1,17 @@
 # Load packages --------
 library(tidyverse)
+library(gridExtra)
 library(httr)
 library(jsonlite)
 library(dplyr)
 library(purrr)
 library(plyr) #adds the count method
+library(ggplot2)
 source("config.R")
 
 #Getting the data ------------
 
-petsData <- jsonlite::fromJSON(site, simplifyVector = FALSE, simplifyMatrix = TRUE)
-
-
-
+petsData <- jsonlite::fromJSON(site, simplifyVector = FALSE, simplifyMatrix = FALSE)
 
 #Turning the data into a table from a list ------------
 
@@ -20,8 +19,6 @@ petsData <- jsonlite::fromJSON(site, simplifyVector = FALSE, simplifyMatrix = TR
 petsData <- petsData$pets
     
 head(petsData)
-
-
 
 
 #Turning it into a tibble
@@ -34,7 +31,9 @@ petsDataTable <- petsData %>% {
         family = map_chr(., "family"),
         #Using unlist to get into the list for this one
         strongAgainst = unlist(map(.,"strongAgainst")),
-        health = map(statsList, "health")
+        health = map_int(statsList, "health"),
+        power = map_int(statsList, "power"),
+        speed = map_int(statsList, "speed")
     )
 }
 
@@ -45,13 +44,12 @@ table(petsDataTable$CanBattle)
 table(petsDataTable$strongAgainst)
 
 
-
 #using count to create a dataframe
 families <- count(petsDataTable$family)
 families <- families[order(-families$freq),]
-families
 
-#Plotting practice ------
+
+#Bar Plot practice ------
 barplot(height = families$freq,
         names.arg = families$x,
         xlab = "Type",
@@ -61,8 +59,34 @@ barplot(height = families$freq,
         ylim = c(0, 250)
         )
 
-                        
+str(petsDataTable)
+#Boxplot practice ------
+ggplot(data = petsDataTable, mapping = aes(x = family, y = health, color = family)) + 
+    geom_boxplot() +
+    geom_boxplot(outlier.size=0) + geom_jitter(width=0.2,alpha=0.4,aes(color = family)) +
+    coord_flip()
 
+#Plot practice ------
+ggplot(petsDataTable, aes(family, health, colour = family)) + 
+    geom_point()
+
+#Plot practice ------
+ggplot(petsDataTable, aes(family, health)) + 
+    geom_bin2d(
+        binwidth = c(5, 5)
+    )
+
+#Plot practice ------
+ggplot(petsDataTable, aes(family, health, colour = family)) + 
+    geom_jitter()
+
+
+
+ggplot(petsDataTable, aes(family, power, colour = family)) + 
+    geom_jitter()
+
+ggplot(petsDataTable, aes(family, speed, colour = family)) + 
+    geom_tile(aes(fill=family))
 
 #Extra workings ---------
 
@@ -73,7 +97,6 @@ barplot(height = families$freq,
 petName <- petsData %>% map_chr("name")
 typeof(petName)
 petsData %>% map_int(c("stats", "health"))
-
 
 data <- bind_rows(petsData, .id = 'play')
 
